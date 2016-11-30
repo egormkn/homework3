@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">ImageService</string>
+    <string name="not_loaded">Не загружено</string>
+    <string name="update">Запуск</string>
+    <string name="check">Проверить статус</string>
+</resources>
