@@ -1,6 +1,5 @@
 package su.gear.imageservice;
 
-import android.app.Activity;
 import android.app.IntentService;
 import android.content.Intent;
 import android.support.v4.content.LocalBroadcastManager;
@@ -19,9 +18,18 @@ public class ImageLoaderService extends IntentService {
     public static final String TAG = ImageLoaderService.class.getSimpleName();
 
     public static final String ACTION = "su.gear.imageservice.ImageLoaderService";
+    public static final String FILENAME = "image.jpg";
+    private static final String TEMP_FILENAME = "image_temp.jpg";
 
     public ImageLoaderService() {
         super(TAG);
+    }
+
+    private void sendBroadcast(int result, int progress) {
+        LocalBroadcastManager.getInstance(this)
+                .sendBroadcast(new Intent(ACTION)
+                        .putExtra("result", result)
+                        .putExtra("progress", progress));
     }
 
     @Override
@@ -30,15 +38,19 @@ public class ImageLoaderService extends IntentService {
         String urlToDownload = intent.getStringExtra("url");
         Log.d(TAG, "URL: " + urlToDownload);
 
-        int result = Utils.RESULT_LOADING;
+        sendBroadcast(Utils.RESULT_STARTED, 0);
 
-        File outputFile = null;
+        int result = Utils.RESULT_LOADING;
 
         URLConnection connection;
         InputStream input = null;
         OutputStream output = null;
 
         try {
+            File originalFile = new File(getApplicationContext().getFilesDir(), FILENAME);
+            if (originalFile.exists()) {
+                originalFile.delete();
+            }
             URL url = new URL(urlToDownload);
             connection = url.openConnection();
             connection.connect();
@@ -46,7 +58,7 @@ public class ImageLoaderService extends IntentService {
             int fileLength = connection.getContentLength();
 
             input = new BufferedInputStream(connection.getInputStream());
-            outputFile = new File(getApplicationContext().getFilesDir(), "image.png");
+            File outputFile = new File(getApplicationContext().getFilesDir(), TEMP_FILENAME);
             output = new FileOutputStream(outputFile);
 
             byte data[] = new byte[1024];
@@ -56,29 +68,21 @@ public class ImageLoaderService extends IntentService {
                 total += count;
                 output.write(data, 0, count);
 
-                /*Intent in = new Intent(ACTION);
-                in.putExtra("progress", (int) (total * 100 / fileLength));
-                in.putExtra("result", result);
-                LocalBroadcastManager.getInstance(this).sendBroadcast(in);*/
+                sendBroadcast(result, (int) (total * 100 / fileLength));
             }
             output.flush();
 
+            boolean ignored = outputFile.renameTo(originalFile);
             result = Utils.RESULT_OK;
         } catch (Exception e) {
-            result = Activity.RESULT_CANCELED;
+            result = Utils.RESULT_ERROR;
             Log.e(TAG, "Failed to get image: " + urlToDownload);
         } finally {
             Utils.closeSilently(input);
             Utils.closeSilently(output);
         }
 
-        Intent in = new Intent(ACTION);
-        in.putExtra("progress", 100);
-        in.putExtra("result", result);
-        if (outputFile != null) {
-            in.putExtra("path", outputFile.getAbsolutePath());
-        }
-        LocalBroadcastManager.getInstance(this).sendBroadcast(in);
+        sendBroadcast(result, 100);
         Log.d(TAG, "Service stopped");
     }
 }

@@ -1,12 +1,14 @@
 package su.gear.imageservice;
 
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -23,14 +25,12 @@ import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final String IMAGE_FILE = "image.png";
-    private final String IMAGE_TEMP_FILE = "image_temp.png";
-
-    private ImageView imageView;
-    private TextView errorTextView;
+    private ImageView imageView, blurredImageView;
+    private TextView errorTextView, copyright;
     private ProgressBar progressBar;
 
     private BroadcastReceiver receiver;
+    private File image;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,17 +40,26 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        copyright = (TextView) findViewById(R.id.copyright);
+        copyright.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://simonstalenhag.se/"));
+                startActivity(browserIntent);
+            }
+        });
+
         imageView = (ImageView) findViewById(R.id.image);
+        blurredImageView = (ImageView) findViewById(R.id.image_blurred);
         errorTextView = (TextView) findViewById(R.id.not_loaded);
         progressBar = (ProgressBar) findViewById(R.id.progressbar);
-        /*progressBar.setIndeterminate(false);
-        progressBar.setProgress(0);
-        progressBar.setMax(100);*/
+        progressBar.setIndeterminate(true);
+        progressBar.setMax(100);
 
-        File outputFile = new File(getApplicationContext().getFilesDir(), IMAGE_FILE);
-
-        if (outputFile.exists()) {
-            showImage(outputFile);
+        image = new File(getApplicationContext().getFilesDir(), ImageLoaderService.FILENAME);
+        if (image.exists()) {
+            showProgress();
+            new ImageDrawingTask().execute(image);
         } else {
             showError();
         }
@@ -58,26 +67,26 @@ public class MainActivity extends AppCompatActivity {
         receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                int resultCode = intent.getIntExtra("result", Activity.RESULT_CANCELED);
+                int resultCode = intent.getIntExtra("result", Utils.RESULT_ERROR);
 
                 switch (resultCode) {
                     case Utils.RESULT_ERROR:
                         showError();
                         break;
+                    case Utils.RESULT_STARTED:
+                        showProgress();
+                        progressBar.setProgress(0);
+                        break;
                     case Utils.RESULT_LOADING:
-                        /*int progress = intent.getIntExtra("progress", -1);
-                        progressBar.setProgress(progress);*/
+                        int progress = intent.getIntExtra("progress", 0);
+                        progressBar.setIndeterminate(false);
+                        progressBar.setProgress(progress);
                         if (progressBar.getVisibility() == View.GONE) {
-                            progressBar.setVisibility(View.VISIBLE);
-                            errorTextView.setVisibility(View.GONE);
-                            imageView.setVisibility(View.GONE);
+                            showProgress();
                         }
                         break;
                     case Utils.RESULT_OK:
-                        String path = intent.getStringExtra("path");
-                        if (path != null) {
-                            showImage(new File(path));
-                        }
+                        new ImageDrawingTask().execute(image);
                         break;
                 }
                 invalidateOptionsMenu();
@@ -85,38 +94,31 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        File savedImage = new File(getApplicationContext().getFilesDir(), IMAGE_TEMP_FILE);
-        if (savedImage.exists()) {
-            File image = new File(getApplicationContext().getFilesDir(), IMAGE_FILE);
-            savedImage.renameTo(image);
-            showImage(image);
-        }
+    private void showProgress() {
+        progressBar.setIndeterminate(false);
+        progressBar.setVisibility(View.VISIBLE);
+        errorTextView.setVisibility(View.GONE);
+        copyright.setVisibility(View.GONE);
+        imageView.setVisibility(View.GONE);
+        blurredImageView.setVisibility(View.GONE);
     }
 
     private void showError() {
         progressBar.setVisibility(View.GONE);
         errorTextView.setVisibility(View.VISIBLE);
+        copyright.setVisibility(View.GONE);
         imageView.setVisibility(View.GONE);
-    }
-
-    private void showImage(File image) {
-        imageView.setImageBitmap(BitmapFactory.decodeFile(image.getAbsolutePath()));
-        progressBar.setVisibility(View.GONE);
-        errorTextView.setVisibility(View.GONE);
-        imageView.setVisibility(View.VISIBLE);
-        File tempFile = new File(getApplicationContext().getFilesDir(), IMAGE_TEMP_FILE);
-        tempFile.delete();
-        image.renameTo(tempFile);
+        blurredImageView.setVisibility(View.GONE);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        if (isServiceRunning(ImageLoaderService.class)) {
+        if (Utils.isServiceRunning(this, ImageLoaderService.class)) {
             menu.findItem(R.id.toolbar_update).setVisible(false);
+        }
+        if (!image.exists()) {
+            menu.findItem(R.id.toolbar_delete).setVisible(false);
         }
         return true;
     }
@@ -132,24 +134,19 @@ public class MainActivity extends AppCompatActivity {
             invalidateOptionsMenu();
             return true;
         } else if (id == R.id.toolbar_status) {
-            if (isServiceRunning(ImageLoaderService.class)) {
+            if (Utils.isServiceRunning(this, ImageLoaderService.class)) {
                 Toast.makeText(getApplicationContext(), "Service is running", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(getApplicationContext(), "Service is not running", Toast.LENGTH_SHORT).show();
             }
             return true;
+        } else if (id == R.id.toolbar_delete) {
+            showError();
+            boolean ignored = image.delete();
+            invalidateOptionsMenu();
+            return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
@@ -163,5 +160,43 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(receiver);
+    }
+
+    class BitmapPair {
+        private final Bitmap original, blurred;
+
+        public BitmapPair(Bitmap original, Bitmap blurred) {
+            this.original = original;
+            this.blurred = blurred;
+        }
+
+        public Bitmap getOriginal() {
+            return original;
+        }
+
+        public Bitmap getBlurred() {
+            return blurred;
+        }
+    }
+
+    class ImageDrawingTask extends AsyncTask<File, Void, BitmapPair> {
+
+        @Override
+        protected BitmapPair doInBackground(File... files) {
+            Bitmap original = BitmapFactory.decodeFile(files[0].getAbsolutePath());
+            return new BitmapPair(original, Utils.blurBitmap(getApplicationContext(), original));
+        }
+
+        @Override
+        protected void onPostExecute(BitmapPair result) {
+            super.onPostExecute(result);
+            imageView.setImageBitmap(result.getOriginal());
+            blurredImageView.setImageBitmap(result.getBlurred());
+            progressBar.setVisibility(View.GONE);
+            errorTextView.setVisibility(View.GONE);
+            imageView.setVisibility(View.VISIBLE);
+            blurredImageView.setVisibility(View.VISIBLE);
+            copyright.setVisibility(View.VISIBLE);
+        }
     }
 }

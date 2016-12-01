@@ -1,6 +1,8 @@
 <resources>
-    <string name="app_name">ImageService</string>
+    <string name="app_name" translatable="false">ImageService</string>
     <string name="not_loaded">Не загружено</string>
     <string name="update">Запуск</string>
     <string name="check">Проверить статус</string>
+    <string name="delete">Удалить картинку</string>
+    <string name="copyright">Художник: Simon Stalenhag</string>
 </resources>

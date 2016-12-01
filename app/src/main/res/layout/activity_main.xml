@@ -14,6 +14,7 @@
         android:layout_height="wrap_content"
         android:minHeight="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
+        android:theme="@style/AppThemeToolbar"
         app:titleTextColor="@android:color/white" />
 
     <FrameLayout
@@ -22,10 +23,18 @@
         android:layout_weight="1">
 
         <ImageView
+            android:id="@+id/image_blurred"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:scaleType="centerCrop" />
+
+        <ImageView
             android:id="@+id/image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="center" />
+            android:layout_gravity="center"
+            android:scaleType="centerInside" />
 
         <TextView
             android:id="@+id/not_loaded"
@@ -40,7 +49,21 @@
             android:id="@+id/progressbar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"/>
+            android:layout_gravity="center"
+            android:indeterminate="false"
+            tools:progress="50"
+            style="?android:attr/progressBarStyleHorizontal" />
 
+        <TextView
+            android:id="@+id/copyright"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|bottom"
+            android:layout_margin="8dp"
+            android:textColor="@color/colorText"
+            android:text="@string/copyright"
+            android:background="@drawable/copyright"
+            android:padding="6dp"
+            android:clickable="true" />
     </FrameLayout>
 </LinearLayout>

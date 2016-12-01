@@ -10,6 +10,12 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@+id/toolbar_delete"
+        android:icon="@drawable/ic_delete"
+        android:title="@string/delete"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/toolbar_status"
         android:icon="@drawable/ic_status"
         android:title="@string/check"
