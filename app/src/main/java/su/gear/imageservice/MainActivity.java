@@ -183,6 +183,9 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected BitmapPair doInBackground(File... files) {
+            if (!files[0].exists()) {
+                return new BitmapPair(null, null);
+            }
             Bitmap original = BitmapFactory.decodeFile(files[0].getAbsolutePath());
             return new BitmapPair(original, Utils.blurBitmap(getApplicationContext(), original));
         }
@@ -190,13 +193,17 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(BitmapPair result) {
             super.onPostExecute(result);
-            imageView.setImageBitmap(result.getOriginal());
-            blurredImageView.setImageBitmap(result.getBlurred());
-            progressBar.setVisibility(View.GONE);
-            errorTextView.setVisibility(View.GONE);
-            imageView.setVisibility(View.VISIBLE);
-            blurredImageView.setVisibility(View.VISIBLE);
-            copyright.setVisibility(View.VISIBLE);
+            if (result.getBlurred() == null || result.getOriginal() == null) {
+                showError();
+            } else {
+                imageView.setImageBitmap(result.getOriginal());
+                blurredImageView.setImageBitmap(result.getBlurred());
+                progressBar.setVisibility(View.GONE);
+                errorTextView.setVisibility(View.GONE);
+                imageView.setVisibility(View.VISIBLE);
+                blurredImageView.setVisibility(View.VISIBLE);
+                copyright.setVisibility(View.VISIBLE);
+            }
         }
     }
 }
