@@ -21,6 +21,8 @@ public class ImageLoaderService extends IntentService {
     public static final String FILENAME = "image.jpg";
     private static final String TEMP_FILENAME = "image_temp.jpg";
 
+    public static boolean isRunning = false;
+
     public ImageLoaderService() {
         super(TAG);
     }
@@ -34,6 +36,7 @@ public class ImageLoaderService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        isRunning = true;
         Log.d(TAG, "Service started");
         String urlToDownload = intent.getStringExtra("url");
         Log.d(TAG, "URL: " + urlToDownload);
@@ -84,5 +87,6 @@ public class ImageLoaderService extends IntentService {
 
         sendBroadcast(result, 100);
         Log.d(TAG, "Service stopped");
+        isRunning = false;
     }
 }

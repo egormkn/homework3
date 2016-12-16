@@ -1,9 +1,11 @@
 package su.gear.imageservice;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.support.v8.renderscript.*;
+import android.support.v8.renderscript.Allocation;
+import android.support.v8.renderscript.Element;
+import android.support.v8.renderscript.RenderScript;
+import android.support.v8.renderscript.ScriptIntrinsicBlur;
 
 import java.io.Closeable;
 import java.util.Random;
@@ -43,8 +45,6 @@ public final class Utils {
             "http://www.simonstalenhag.se/bilderbig/paleo/ramphorynchus.jpg"
     };
 
-    private static int last = 0;
-
     public static String getNextImageUrl() {
         return links[random.nextInt(links.length)];
     }
@@ -79,6 +79,7 @@ public final class Utils {
         theIntrinsic.forEach(tmpOut);
 
         // There is no understandable documentation for ScriptGroup.Builder2 :(
+        // Please, help me to change blurred image color
 
         /*ScriptIntrinsicColorMatrix theMatrix = ScriptIntrinsicColorMatrix.create(rs, Element.U8_4(rs));
         theMatrix.setAdd((float) -0.6, (float) -0.6, (float) -0.6, (float) 1.0);
@@ -91,16 +92,6 @@ public final class Utils {
         rs.destroy();
 
         return outputBitmap;
-    }
-
-    public static boolean isServiceRunning(Context context, Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private Utils() {}

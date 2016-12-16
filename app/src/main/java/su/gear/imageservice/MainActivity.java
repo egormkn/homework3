@@ -1,6 +1,5 @@
 package su.gear.imageservice;
 
-import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -114,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        if (Utils.isServiceRunning(this, ImageLoaderService.class)) {
+        if (ImageLoaderService.isRunning) {
             menu.findItem(R.id.toolbar_update).setVisible(false);
         }
         if (!image.exists()) {
@@ -128,13 +127,16 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == R.id.toolbar_update) {
+            if (ImageLoaderService.isRunning) {
+                return true;
+            }
             Intent i = new Intent(getApplicationContext(), ImageLoaderService.class);
             i.putExtra("url", Utils.getNextImageUrl());
             startService(i);
             invalidateOptionsMenu();
             return true;
         } else if (id == R.id.toolbar_status) {
-            if (Utils.isServiceRunning(this, ImageLoaderService.class)) {
+            if (ImageLoaderService.isRunning) {
                 Toast.makeText(getApplicationContext(), "Service is running", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(getApplicationContext(), "Service is not running", Toast.LENGTH_SHORT).show();
@@ -154,6 +156,11 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         IntentFilter filter = new IntentFilter(ImageLoaderService.ACTION);
         LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter);
+        image = new File(getApplicationContext().getFilesDir(), ImageLoaderService.FILENAME);
+        if (image.exists()) {
+            showProgress();
+            new ImageDrawingTask().execute(image);
+        }
     }
 
     @Override

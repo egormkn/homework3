@@ -12,6 +12,9 @@ public class CustomBroadcastReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (!ImageLoaderService.isRunning) {
+            return;
+        }
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context)
                         .setSmallIcon(R.drawable.ic_update)
